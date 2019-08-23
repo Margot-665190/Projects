@@ -1,0 +1,62 @@
+########## This Powershell script creates an incremental backup of non-administrative user's profile on a computer and send it to a remote server using a shared folder ###########
+# Created on : August 23, 2019
+# Last modification : August 23, 2019
+# Script revision : 1.0
+
+
+# Allowing the script to be executed and importing Active-Directory module in Powershell.
+
+Set-ExecutionPolicy Unrestricted
+
+
+# Getting details such as datetime, the name of the computer, the list of non-administrative users and shared folder where the backup will be sent.
+
+$Date = Get-Date -Format "dd/MM/yyyy - HH:mm"
+$PC = $env:COMPUTERNAME
+$Destination = "\\192.168.1.2\SAV"
+$Users = ls C:\Users | Where-Object Name -NotMatch "Admin" | Where-Object Name -NotMatch "Public"
+
+
+#Creating an exception catcher to save exceptions into a log file.
+
+$Error = {
+    $Exception = $error[0].$Exception.GetType().fullname
+    Write-Warning $_
+    "$Date : Failed to backup the profile of $User : $_"|Add-Content $Destination\logs.txt
+    $i = 1
+}
+
+
+# Checking if the folder where the backup will be, with the computer's name, exists. If not, it is created in the shared folder.
+
+if ((Test-Path "$Destination\$PC") -eq $false) {
+    New-Item -Name $PC -ItemType directory
+    Move-Item -Path .\$PC -Destination $Destination
+}
+
+
+# Foreach user in $Users, checking if a folder to the user's name exists in the computer's folder in the shared folder. If not, it is created.
+# Then, the script uses robocopy to backup the entire tree diagramm of the folder C:\Users\$user excluding AppData files.
+
+try {
+    foreach ($User in $Users) {
+        if ((Test-Path "$Destination\$PC\$User") -eq $false) {
+            New-Item -Name "$User" -ItemType directory
+            Move-Item -Path ".\$User" -Destination "$Destination\$PC"
+        }
+    robocopy "C:\Users\$User" "$Destination\$PC\$User" /b /XJD /MIR /FFT /R:3 /W:10 /Z /NP /NDL /XD "AppData"
+    }
+}
+catch {
+    .$Error
+}
+
+
+# End the script.
+
+if ($i -eq 1) {
+    exit(1)
+    }
+else {
+    exit(0)
+    }
