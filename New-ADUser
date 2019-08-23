@@ -71,6 +71,7 @@ $Error = {
     $Exception = $error[0].$Exception.GetType().fullname
     Write-Warning $_
     "$Date : Failed to create new user $Username : $_"|Add-Content C:\Users\$env:USERNAME\Documents\logs_3.txt
+    $i = 1
 }
 
 
@@ -123,7 +124,6 @@ if ($PSBoundParameters.ContainsKey('Fichier')) {
     }
     catch {
         .$Error
-        exit(1)
     }
 }
 else {
@@ -132,11 +132,15 @@ else {
     }
     catch {
         .$Error
-        exit(1)
     }
 }
 
 
-# End of the script if no exception has occurred.
+# End the script.
 
-exit(0)
+if ($i -eq 1) {
+    exit(1)
+    }
+else {
+    exit(0)
+    }
