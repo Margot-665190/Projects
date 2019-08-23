@@ -1,4 +1,4 @@
-This Powershell script is used to show all members of an Active-Directory group.
+# This Powershell script is used to show all members of an Active-Directory group.
 
 This script has to be used on a Windows Server with Active Directory. It has been tested on :
 - Windows Server 2016
