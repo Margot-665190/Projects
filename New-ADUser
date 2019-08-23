@@ -90,8 +90,8 @@ if ($PSBoundParameters.ContainsKey('Fichier')) {
             $Mobile = $_.Mobile
             $Mail = $_.Email
             $Username = "$Firstname.$Lastname"
-            $OU = "OU=$Departement,DC=$Domain,DC=fr"
-            Write-Host "Creating new user $Username in $Domain with the following details : working in $Ville, at $PrimaryGroup departement. Phone number : $Tel2, mobile phone : $Mobile, email address : $Mail."
+            $OU = "OU=$PrimaryGroup,DC=$Domain,DC=fr"
+            Write-Host "Creating new user $Username in $Domain with the following details : working in $City, at $PrimaryGroup departement. Phone number : $Tel2, mobile phone : $Mobile, email address : $Mail."
             try {
                 New-ADUser -SamAccountName $Username -UserPrincipalName "$Username@$Domain" -Name "$Firstname $Lastname" -GivenName $Firstname -Surname $Lastname -Enabled $true -ChangePasswordAtLogon $true -Path $OU -City $City -EmailAddress $Mail -OfficePhone $Tel -MobilePhone $Mobile -AccountPassword (ConvertTo-SecureString $Password -AsPlainText -Force)
             }
