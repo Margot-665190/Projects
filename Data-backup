@@ -32,6 +32,9 @@ $Error = {
     $i = 1
 }
 
+
+# Creating a way to send two different emails in case of failure or success.
+
 $FailureMail = {
     $pass = ConvertTo-SecureString -String "$Password" -AsPlainText -Force
     $SMTP = "smtp.gmail.com"
