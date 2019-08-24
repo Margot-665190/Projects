@@ -1,8 +1,15 @@
 ########## This Powershell script creates an incremental backup of non-administrative user's profile on a computer and send it to a remote server using a shared folder ###########
 # Created on : August 23, 2019
-# Last modification : August 23, 2019
-# Script revision : 1.0
+# Last modification : August 24, 2019
+# Script revision : 1.1
 
+
+Param(
+    [Parameter(Mandatory=$true)]
+    [string] $Destination = $(Read-Host -prompt "Backup destination : "),
+    [string] $MyEmail = $(Read-Host -prompt "Email address : "),
+    [string] $Password = $(Read-Host -prompt "Email Password : ")
+)
 
 # Allowing the script to be executed and importing Active-Directory module in Powershell.
 
@@ -13,7 +20,6 @@ Set-ExecutionPolicy Unrestricted
 
 $Date = Get-Date -Format "dd/MM/yyyy - HH:mm"
 $PC = $env:COMPUTERNAME
-$Destination = "\\192.168.1.2\SAV"
 $Users = ls C:\Users | Where-Object Name -NotMatch "Admin" | Where-Object Name -NotMatch "Public"
 
 
@@ -22,8 +28,28 @@ $Users = ls C:\Users | Where-Object Name -NotMatch "Admin" | Where-Object Name -
 $Error = {
     $Exception = $error[0].$Exception.GetType().fullname
     Write-Warning $_
-    "$Date : Failed to backup the profile of $User : $_"|Add-Content $Destination\logs.txt
+    "$Date : Failed to backup the profile of $User : $_"|Add-Content "$Destination\logs.txt"
     $i = 1
+}
+
+$FailureMail = {
+    $pass = ConvertTo-SecureString -String "$Password" -AsPlainText -Force
+    $SMTP = "smtp.gmail.com"
+    $Subject = "Backup Warning"
+    $Body = "$Date : Backup has not been successfull on $PC for user $User. For more, see attachments."
+    $Creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $MyEmail, $pass
+    Start-Sleep 2
+    Send-MailMessage -To $MyEmail -From $MyEmail -Subject $Subject -Body $Body -SmtpServer $SMTP -Credential $Creds -UseSsl -Port 587 -DeliveryNotificationOption Never -Attachments "$Destination\logs.txt"
+}
+
+$SuccessMail = {
+    $pass = ConvertTo-SecureString -String "$Password" -AsPlainText -Force
+    $SMTP = "smtp.gmail.com"
+    $Subject = "Backup done"
+    $Body = "$Date : Backup of all user's profiles has been successfull on $PC."
+    $Creds = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $MyEmail, $pass
+    Start-Sleep 2
+    Send-MailMessage -To $MyEmail -From $MyEmail -Subject $Subject -Body $Body -SmtpServer $SMTP -Credential $Creds -UseSsl -Port 587 -DeliveryNotificationOption Never
 }
 
 
@@ -38,19 +64,21 @@ if ((Test-Path "$Destination\$PC") -eq $false) {
 # Foreach user in $Users, checking if a folder to the user's name exists in the computer's folder in the shared folder. If not, it is created.
 # Then, the script uses robocopy to backup the entire tree diagramm of the folder C:\Users\$user excluding AppData files.
 
-try {
-    foreach ($User in $Users) {
+
+foreach ($User in $Users) {
+    try {
         if ((Test-Path "$Destination\$PC\$User") -eq $false) {
             New-Item -Name "$User" -ItemType directory
             Move-Item -Path ".\$User" -Destination "$Destination\$PC"
         }
-    robocopy "C:\Users\$User" "$Destination\$PC\$User" /b /XJD /MIR /FFT /R:3 /W:10 /Z /NP /NDL /XD "AppData"
+        robocopy "C:\Users\$User" "$Destination\$PC\$User" /b /XJD /MIR /FFT /R:3 /W:10 /Z /NP /NDL /XD "AppData"
+        .$SuccessMail
+    }
+    catch {
+        .$Error
+        .$FailureMail
     }
 }
-catch {
-    .$Error
-}
-
 
 # End the script.
 
