@@ -1,6 +1,6 @@
 ########## This Powershell script creates new Active-Directory users and their own shared folder ###########
-# Created on : August 23, 2019
-# Last modification : August 23, 2019
+# Created on : August 24, 2019
+# Last modification : August 24, 2019
 # Script revision : 1.0
 
 
@@ -8,8 +8,8 @@
 
 Param(
     [Parameter(Mandatory=$false)]
-    [string] $Fichier = $(Read-Host -prompt "Chemin du fichier csv (appuyer sur Entrée si un appel au fichier n'est pas souhaité : "),
-    [string] $Password = $(Read-Host -prompt "Mot de passe (appuyer sur entrer si le mot de passe lié à l'appel au fichier n'est pas nécesaire) : ")
+    [string] $Fichier = $(Read-Host -prompt "CSV File (Press Enter to ignore) : "),
+    [string] $Password = $(Read-Host -prompt "Password (Press Enter to ignore) : ")
 )
 
 
@@ -17,7 +17,7 @@ Param(
 
 Function ManualUser {
     param(
-        [Parameter(Mandatory=$true)];
+        [Parameter(Mandatory=$true)]
         [string] $Firstname = $(Read-Host -prompt "Firstname : "),
         [string] $Lastname = $(Read-Host -prompt "Lastname : "),
         [string] $Password = $(Read-Host -prompt "Password : "),
@@ -68,7 +68,7 @@ $Date = Get-Date -Format "dd/MM/yyyy - HH:mm"
 #Creating an exception catcher to save exceptions into a log file..
 
 $Error = {
-    $Exception = $error[0].$Exception.GetType().fullname
+    $Exception = $_.Exception.GetType().fullname
     Write-Warning $_
     "$Date : Failed to create new user $Username : $_"|Add-Content C:\Users\$env:USERNAME\Documents\logs_3.txt
     $i = 1
@@ -92,9 +92,10 @@ if ($PSBoundParameters.ContainsKey('Fichier')) {
             $Mail = $_.Email
             $Username = "$Firstname.$Lastname"
             $OU = "OU=$PrimaryGroup,DC=$Domain,DC=fr"
-            Write-Host "Creating new user $Username in $Domain with the following details : working in $City, at $PrimaryGroup departement. Phone number : $Tel2, mobile phone : $Mobile, email address : $Mail."
+            Write-Host "Creating new user $Username in $Domain with the following details : working in $City, at $PrimaryGroup department. Phone number : $Tel2, mobile phone : $Mobile, email address : $Mail." -ForegroundColor DarkGray
             try {
                 New-ADUser -SamAccountName $Username -UserPrincipalName "$Username@$Domain" -Name "$Firstname $Lastname" -GivenName $Firstname -Surname $Lastname -Enabled $true -ChangePasswordAtLogon $true -Path $OU -City $City -EmailAddress $Mail -OfficePhone $Tel -MobilePhone $Mobile -AccountPassword (ConvertTo-SecureString $Password -AsPlainText -Force)
+                Write-Host "$Date : New user $Username has been successfully created." -ForegroundColor Green
             }
             catch {
                 .$Error
@@ -111,16 +112,20 @@ if ($PSBoundParameters.ContainsKey('Fichier')) {
             catch {
                 .$Error
             }
-            try {
-                New-Item -Name $Username -ItemType directory
-                Move-Item -Path .\$Username -Destination F:\$PrimaryGroup
-                New-SmbShare -Name $Username -Path F:\$PrimaryGroup\$Username -FullAccess $Username
+            if ((Test-Path "F:\$PrimaryGroup\$Username") -eq $false) {
+                try {
+                    New-Item -Name $Username -ItemType directory
+                    Move-Item -Path .\$Username -Destination F:\$PrimaryGroup
+                    New-SmbShare -Name $Username -Path F:\$PrimaryGroup\$Username -FullAccess $Username
+                }
+                catch {
+                    .$Error
+                }
             }
-            catch {
-                .$Error
+            else {
+                Write-Warning "Shared name $Username already exists."
             }
-            Write-Host "$Date : New user $Username has been successfully created, as well as its shared folder." -ForegroundColor Green
-            }
+        }
     }
     catch {
         .$Error
