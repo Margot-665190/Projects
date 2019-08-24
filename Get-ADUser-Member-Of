@@ -1,14 +1,15 @@
-########## This Powershell script shows all groups of an Active-Directory Member ###########
+########## This Powershell script shows all groups of an Active-Directory Member ###########
 # Created on : August 23, 2019
-# Last modification : August 23, 2019
-# Script revision : 1.0
+# Last modification : August 24, 2019
+# Script revision : 1.1
 
 
 # Defining a mandatory parameter which asks for the Active-Directory member's username.
 
 Param(
     [Parameter(Mandatory=$true)]
-    [string] $Username = $(Read-Host -prompt "Username (e.g. : F.Lastname) : ")
+    [string] $Username = $(Read-Host -prompt "Username (e.g. : F.Lastname) : "),
+    [string] $File = $(Read-Host -prompt "File (e.g. : C:\Path\of\the\file.txt) : ")
 )
 
 
@@ -23,20 +24,32 @@ Import-Module ActiveDirectory
 $Date = Get-Date -Format "dd/MM/yyyy - HH:mm"
 
 
-#Creating an exception catcher to save exceptions into a log file and then end the script.
+# Creating an exception catcher to save exceptions into a log file and then end the script.
 
 $Error = {
-    $Exception = $error[0].$Exception.GetType().fullname
+    $Exception = $_.Exception.GetType().fullname
     Write-Warning $_
     "$Date : Failed to show all groups $Username belongs to : $_"|Add-Content C:\Users\$env:USERNAME\Documents\logs_1.txt
     exit(1)
 }
 
 
+# Checking if the file does already exists and if it is, clears it.
+
+if ((Test-Path $File) -eq $true) {
+    try {
+        Clear-Content $File
+    }
+    catch {
+        .$Error
+    }
+}
+
 # Trying to show all groups of the Active-Directory member. If an exception occurred, it is catched by the exception catcher written above.
 
 try {
-    (Get-ADUser $Username -Properties MemberOf | Select-Object MemberOf).MemberOf
+    (Get-ADUser $Username -Properties MemberOf | Select-Object MemberOf).MemberOf | Add-Content $File
+    Get-content $File
 }
 catch {
     .$Error
